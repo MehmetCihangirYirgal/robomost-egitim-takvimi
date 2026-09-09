@@ -4,6 +4,7 @@ import { calculateEducationPeriods } from "../../services/calendarEngine";
 import { compareISO, formatCurrency, formatLong, formatShort } from "../../services/dateUtils";
 import { GraphicCalendar } from "./GraphicCalendar";
 import { SignatureSection } from "./SignatureSection";
+import robomostLogo from "../../assets/robomost-logo.png";
 
 interface Props {
   plan: StudentPlan;
@@ -15,7 +16,7 @@ function relevantPeriods(academicYear: AcademicYear, startDate: string, endDate:
   return periods.filter((p) => compareISO(p.startDate, endDate) <= 0 && compareISO(p.endDate, startDate) >= 0);
 }
 
-function CopyPage({ plan, academicYear, copyLabel }: Props & { copyLabel: "VELİ NÜSHASI" | "ROBOMOST NÜSHASI" }) {
+function CopyPage({ plan, academicYear }: Props) {
   const generated = plan.generatedPlan;
   if (!generated) return null;
 
@@ -25,11 +26,9 @@ function CopyPage({ plan, academicYear, copyLabel }: Props & { copyLabel: "VELİ
 
   return (
     <div className="a4-page">
-      <div className="copy-watermark">{copyLabel}</div>
-
       <div className="flex items-baseline justify-between border-b-2 border-robomost-600 pb-3 mb-4">
         <div>
-          <div className="text-robomost-700 font-extrabold text-lg tracking-tight">ROBOMOST</div>
+          <img src={robomostLogo} alt="ROBOMOST" className="h-6 w-auto mb-1" />
           <div className="text-[11px] text-slate-500">{academicYear.label} Eğitim ve Ödeme Planı</div>
         </div>
         <div className="text-right">
@@ -158,8 +157,8 @@ function CopyPage({ plan, academicYear, copyLabel }: Props & { copyLabel: "VELİ
 export function PrintDocument({ plan, academicYear }: Props) {
   return (
     <div id="print-root">
-      <CopyPage plan={plan} academicYear={academicYear} copyLabel="VELİ NÜSHASI" />
-      <CopyPage plan={plan} academicYear={academicYear} copyLabel="ROBOMOST NÜSHASI" />
+      <CopyPage plan={plan} academicYear={academicYear} />
+      <CopyPage plan={plan} academicYear={academicYear} />
     </div>
   );
 }

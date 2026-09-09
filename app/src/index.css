@@ -26,20 +26,6 @@ body {
   position: relative;
 }
 
-.copy-watermark {
-  position: absolute;
-  top: -6mm;
-  right: 16mm;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  color: #128b84;
-  border: 1px solid #128b84;
-  border-radius: 999px;
-  padding: 3px 10px;
-  text-transform: uppercase;
-}
-
 /* ---------------------------------------------------------------------- */
 /* Print rules */
 /* ---------------------------------------------------------------------- */
