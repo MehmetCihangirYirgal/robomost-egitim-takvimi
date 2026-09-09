@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { AcademicYear } from "./types/calendar";
 import type { StudentPlan } from "./types/student";
-import { deletePlan, genId, loadAcademicYears, loadPlans, saveAcademicYears, savePlan } from "./services/storage";
+import { cacheAcademicYears, cachePlans, deletePlan, genId, loadAcademicYears, loadPlans, saveAcademicYears, savePlan } from "./services/storage";
+import { pushAcademicYear, pushPlan, subscribeAcademicYears, subscribePlans } from "./services/cloudSync";
 import { Dashboard } from "./pages/Dashboard";
 import { NewPlanWizard } from "./pages/NewPlanWizard";
 import { SavedPlansPage } from "./pages/SavedPlansPage";
@@ -19,8 +20,42 @@ export default function App() {
   const [printOnlyPlan, setPrintOnlyPlan] = useState<StudentPlan | undefined>(undefined);
 
   useEffect(() => {
-    setAcademicYears(loadAcademicYears());
-    setPlans(loadPlans());
+    // Instant paint from whatever this device already has locally, then
+    // switch over to the live shared copy the moment it arrives — so every
+    // device (and every tab) converges on the same data automatically.
+    const localYears = loadAcademicYears();
+    const localPlans = loadPlans();
+    setAcademicYears(localYears);
+    setPlans(localPlans);
+
+    let yearsBootstrapped = false;
+    const unsubYears = subscribeAcademicYears((years) => {
+      if (years.length === 0 && !yearsBootstrapped) {
+        yearsBootstrapped = true;
+        localYears.forEach((y) => void pushAcademicYear(y));
+        return;
+      }
+      cacheAcademicYears(years);
+      setAcademicYears(years);
+    });
+
+    let plansBootstrapped = false;
+    const unsubPlans = subscribePlans((cloudPlans) => {
+      if (cloudPlans.length === 0 && !plansBootstrapped) {
+        plansBootstrapped = true;
+        if (localPlans.length > 0) {
+          localPlans.forEach((p) => void pushPlan(p));
+          return;
+        }
+      }
+      cachePlans(cloudPlans);
+      setPlans(cloudPlans);
+    });
+
+    return () => {
+      unsubYears();
+      unsubPlans();
+    };
   }, []);
 
   function refreshPlans() {

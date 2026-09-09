@@ -1,6 +1,7 @@
 import type { AcademicYear } from "../types/calendar";
 import type { StudentPlan } from "../types/student";
 import { SEED_ACADEMIC_YEARS } from "../data/seedAcademicYear2026_2027";
+import { deletePlanRemote, pushAcademicYear, pushPlan } from "./cloudSync";
 
 const PLANS_KEY = "robomost.plans.v1";
 const YEARS_KEY = "robomost.academicYears.v1";
@@ -37,8 +38,14 @@ export function loadAcademicYears(): AcademicYear[] {
   return SEED_ACADEMIC_YEARS;
 }
 
+/** Writes years to the local cache only — used to mirror a cloud sync, never pushes back to the cloud. */
+export function cacheAcademicYears(years: AcademicYear[]): void {
+  writeJSON(YEARS_KEY, years);
+}
+
 export function saveAcademicYears(years: AcademicYear[]): void {
   writeJSON(YEARS_KEY, years);
+  years.forEach((y) => void pushAcademicYear(y));
 }
 
 export function saveAcademicYear(year: AcademicYear): void {
@@ -58,6 +65,11 @@ export function loadPlans(): StudentPlan[] {
   return readJSON<StudentPlan[]>(PLANS_KEY, []);
 }
 
+/** Writes plans to the local cache only — used to mirror a cloud sync, never pushes back to the cloud. */
+export function cachePlans(plans: StudentPlan[]): void {
+  writeJSON(PLANS_KEY, plans);
+}
+
 export function savePlan(plan: StudentPlan): void {
   const plans = loadPlans();
   const idx = plans.findIndex((p) => p.id === plan.id);
@@ -67,11 +79,13 @@ export function savePlan(plan: StudentPlan): void {
     plans.push(plan);
   }
   writeJSON(PLANS_KEY, plans);
+  void pushPlan(plan);
 }
 
 export function deletePlan(id: string): void {
   const plans = loadPlans().filter((p) => p.id !== id);
   writeJSON(PLANS_KEY, plans);
+  void deletePlanRemote(id);
 }
 
 export function getPlan(id: string): StudentPlan | undefined {
