@@ -3,6 +3,7 @@ import type { AcademicYear } from "./types/calendar";
 import type { StudentPlan } from "./types/student";
 import { cacheAcademicYears, cachePlans, deletePlan, genId, loadAcademicYears, loadPlans, saveAcademicYears, savePlan } from "./services/storage";
 import { pushAcademicYear, pushPlan, subscribeAcademicYears, subscribePlans } from "./services/cloudSync";
+import { exportContainerIdFor, exportPlansAsZip } from "./services/bulkExport";
 import { Dashboard } from "./pages/Dashboard";
 import { NewPlanWizard } from "./pages/NewPlanWizard";
 import { SavedPlansPage } from "./pages/SavedPlansPage";
@@ -18,7 +19,9 @@ export default function App() {
   const [plans, setPlans] = useState<StudentPlan[]>([]);
   const [view, setView] = useState<View>("dashboard");
   const [editingPlan, setEditingPlan] = useState<StudentPlan | undefined>(undefined);
-  const [printOnlyPlan, setPrintOnlyPlan] = useState<StudentPlan | undefined>(undefined);
+  const [printBatch, setPrintBatch] = useState<StudentPlan[] | undefined>(undefined);
+  const [exportBatch, setExportBatch] = useState<StudentPlan[] | undefined>(undefined);
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | undefined>(undefined);
 
   useEffect(() => {
     // Instant paint from whatever this device already has locally, then
@@ -59,6 +62,29 @@ export default function App() {
     };
   }, []);
 
+  // Once a bulk ZIP export batch is rendered off-screen, capture each plan's
+  // pages to PDF and bundle them — then clear the batch.
+  useEffect(() => {
+    if (!exportBatch || exportBatch.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      if (cancelled) return;
+      const stamp = new Date().toISOString().slice(0, 10);
+      await exportPlansAsZip(exportBatch, `ROBOMOST-Planlar-${stamp}`, (done, total) => {
+        if (!cancelled) setExportProgress({ done, total });
+      });
+      if (!cancelled) {
+        setExportBatch(undefined);
+        setExportProgress(undefined);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportBatch]);
+
   function refreshPlans() {
     setPlans(loadPlans());
   }
@@ -92,11 +118,23 @@ export default function App() {
   }
 
   function printPlan(plan: StudentPlan) {
-    setPrintOnlyPlan(plan);
+    printPlans([plan]);
+  }
+
+  function printPlans(list: StudentPlan[]) {
+    if (list.length === 0) return;
+    setPrintBatch(list);
     requestAnimationFrame(() => {
-      window.print();
-      setPrintOnlyPlan(undefined);
+      requestAnimationFrame(() => {
+        window.print();
+        setPrintBatch(undefined);
+      });
     });
+  }
+
+  function downloadPlansZip(list: StudentPlan[]) {
+    if (list.length === 0 || exportBatch) return;
+    setExportBatch(list);
   }
 
   function updateAcademicYears(years: AcademicYear[]) {
@@ -104,10 +142,19 @@ export default function App() {
     saveAcademicYears(years);
   }
 
-  if (printOnlyPlan) {
-    const year = academicYears.find((y) => y.id === printOnlyPlan.enrollment.academicYearId) ?? academicYears[0];
-    if (!year) return null;
-    return <PrintDocument plan={printOnlyPlan} academicYear={year} />;
+  function yearFor(plan: StudentPlan): AcademicYear | undefined {
+    return academicYears.find((y) => y.id === plan.enrollment.academicYearId) ?? academicYears[0];
+  }
+
+  if (printBatch) {
+    return (
+      <div id="print-root">
+        {printBatch.map((plan) => {
+          const year = yearFor(plan);
+          return year ? <PrintDocument key={plan.id} plan={plan} academicYear={year} /> : null;
+        })}
+      </div>
+    );
   }
 
   return (
@@ -153,10 +200,27 @@ export default function App() {
             onDuplicate={duplicatePlan}
             onDelete={removePlan}
             onNew={goNewPlan}
+            onBulkPrint={printPlans}
+            onBulkDownloadZip={downloadPlansZip}
+            exportProgress={exportProgress}
           />
         )}
         {view === "calendar" && <AcademicCalendarAdminPage academicYears={academicYears} onChange={updateAcademicYears} />}
       </main>
+
+      {exportBatch && (
+        <div style={{ position: "fixed", top: 0, left: "-99999px", width: "210mm" }} aria-hidden="true">
+          {exportBatch.map((plan) => {
+            const year = yearFor(plan);
+            if (!year) return null;
+            return (
+              <div key={plan.id} id={exportContainerIdFor(plan)}>
+                <PrintDocument plan={plan} academicYear={year} />
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

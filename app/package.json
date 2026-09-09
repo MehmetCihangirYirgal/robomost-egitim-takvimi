@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "firebase": "^10.14.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -27,6 +30,8 @@
     "vitest": "^2.0.5"
   },
   "allowScripts": {
-    "esbuild@0.21.5": true
+    "esbuild@0.21.5": true,
+    "core-js@3.50.0": true,
+    "protobufjs@7.6.6": true
   }
 }
