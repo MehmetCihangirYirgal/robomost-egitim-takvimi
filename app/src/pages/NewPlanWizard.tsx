@@ -97,6 +97,18 @@ export function NewPlanWizard({ academicYears, initialPlan, onSaved, onCancel }:
     return map;
   }
 
+  // A plan is persisted the moment it has a real generated payment plan —
+  // not only once staff reaches the document preview — so leaving the
+  // wizard early (via nav, "Listeye Dön", closing the tab) never silently
+  // discards a plan that was already generated on screen.
+  function persist(next: StudentPlan) {
+    const toSave = { ...next, updatedAt: new Date().toISOString() };
+    savePlan(toSave);
+    setPlan(toSave);
+    onSaved(toSave);
+    return toSave;
+  }
+
   function handleGenerate() {
     const map = validationErrorMap();
     setErrors(map);
@@ -113,17 +125,18 @@ export function NewPlanWizard({ academicYears, initialPlan, onSaved, onCancel }:
       ? { ...generated, installments: mergeManualOverrides(generated.installments, plan.generatedPlan.installments) }
       : generated;
 
-    setPlan((p) => ({ ...p, generatedPlan: merged, updatedAt: new Date().toISOString() }));
+    persist({ ...plan, generatedPlan: merged });
     setShowPreview(false);
+  }
+
+  function handlePlanTableChange(generatedPlan: StudentPlan["generatedPlan"]) {
+    persist({ ...plan, generatedPlan });
   }
 
   function handleSaveAndPreview() {
     if (!plan.generatedPlan) return;
-    const toSave = { ...plan, updatedAt: new Date().toISOString() };
-    savePlan(toSave);
-    setPlan(toSave);
+    persist(plan);
     setShowPreview(true);
-    onSaved(toSave);
   }
 
   if (showPreview && plan.generatedPlan && selectedYear) {
@@ -193,7 +206,7 @@ export function NewPlanWizard({ academicYears, initialPlan, onSaved, onCancel }:
           <PaymentPlanTable
             plan={plan.generatedPlan}
             currency={plan.payment.currency}
-            onChange={(generatedPlan) => setPlan((p) => ({ ...p, generatedPlan }))}
+            onChange={handlePlanTableChange}
             onRegenerate={handleGenerate}
           />
           <div className="flex justify-end">
