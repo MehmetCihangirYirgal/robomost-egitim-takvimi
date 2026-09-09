@@ -154,11 +154,20 @@ function CopyPage({ plan, academicYear }: Props) {
   );
 }
 
+/**
+ * Renders both copies for one student. Does NOT own the `#print-root`
+ * wrapper itself — the caller provides exactly one `#print-root` around
+ * however many `PrintDocument`s are being printed (one for a single plan,
+ * several stacked for a bulk print job), so nesting several of these never
+ * produces duplicate `id="print-root"` elements — which would otherwise
+ * each pick up the print CSS's `position: absolute; inset: 0` and pile
+ * every student's pages on top of one another.
+ */
 export function PrintDocument({ plan, academicYear }: Props) {
   return (
-    <div id="print-root">
+    <>
       <CopyPage plan={plan} academicYear={academicYear} />
       <CopyPage plan={plan} academicYear={academicYear} />
-    </div>
+    </>
   );
 }
