@@ -156,7 +156,9 @@ export function NewPlanWizard({ academicYears, initialPlan, onSaved, onCancel }:
             <Button onClick={() => window.print()}>🖨 PDF / Yazdır</Button>
           </div>
         </div>
-        <PrintDocument plan={plan} academicYear={selectedYear} />
+        <div id="print-root">
+          <PrintDocument plan={plan} academicYear={selectedYear} />
+        </div>
       </div>
     );
   }
