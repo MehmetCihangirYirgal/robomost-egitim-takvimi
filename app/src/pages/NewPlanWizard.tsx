@@ -150,6 +150,9 @@ export function NewPlanWizard({ academicYears, initialPlan, onSaved, onCancel }:
             </span>
           </div>
           <div className="flex gap-2">
+            <Button variant="ghost" onClick={onCancel}>
+              📋 Kayıtlı Planlar
+            </Button>
             <Button variant="secondary" onClick={() => setShowPreview(false)}>
               ✎ Düzenle
             </Button>

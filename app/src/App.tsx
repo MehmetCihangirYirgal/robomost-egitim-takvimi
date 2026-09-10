@@ -22,6 +22,34 @@ export default function App() {
   const [printBatch, setPrintBatch] = useState<StudentPlan[] | undefined>(undefined);
   const [exportBatch, setExportBatch] = useState<StudentPlan[] | undefined>(undefined);
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | undefined>(undefined);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  // GitHub Pages / the browser can keep serving a cached index.html after a
+  // deploy. Periodically compare the currently-loaded JS bundle against the
+  // one the live index.html now points to, and prompt for a refresh if they
+  // differ — otherwise staff can be stuck on stale code without any signal.
+  useEffect(() => {
+    const currentScript = document.querySelector<HTMLScriptElement>('script[src*="assets/index-"]');
+    const currentSrc = currentScript?.getAttribute("src") ?? "";
+    if (!currentSrc) return;
+
+    async function checkForUpdate() {
+      try {
+        const res = await fetch("index.html", { cache: "no-store" });
+        const html = await res.text();
+        const match = html.match(/assets\/index-[^"]+\.js/);
+        if (match && !currentSrc.includes(match[0])) {
+          setUpdateAvailable(true);
+        }
+      } catch {
+        // Offline or blocked — nothing to report.
+      }
+    }
+
+    checkForUpdate();
+    const interval = setInterval(checkForUpdate, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Instant paint from whatever this device already has locally, then
@@ -178,6 +206,15 @@ export default function App() {
           </nav>
         </div>
       </header>
+
+      {updateAvailable && (
+        <div className="no-print bg-amber-50 border-b border-amber-200 text-amber-800 text-sm px-6 py-2 flex items-center justify-center gap-3">
+          <span>Uygulamanın yeni bir sürümü yayınlandı. Değişikliklerin kaybolmaması için önce mevcut işleminizi kaydedin, sonra sayfayı yenileyin.</span>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            Yenile
+          </Button>
+        </div>
+      )}
 
       <main className="px-6 py-8">
         {view === "dashboard" && (
