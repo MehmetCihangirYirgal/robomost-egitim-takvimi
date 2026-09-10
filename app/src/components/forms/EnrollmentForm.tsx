@@ -16,6 +16,20 @@ interface Props {
 export function EnrollmentForm({ academicYears, periodsByYear, enrollment, onChange, errors }: Props) {
   const periods = periodsByYear[enrollment.academicYearId] ?? [];
 
+  // Changing the academic year must also re-anchor whichever
+  // mode-specific date/period field points into the OLD year's calendar —
+  // otherwise a stale startPeriodId/groupStartDate silently fails to
+  // resolve during generation (generatePaymentPlan throws, and until that
+  // was caught, the click on "Ödeme Planı Oluştur" did nothing visible).
+  function setAcademicYear(academicYearId: string) {
+    const newPeriods = periodsByYear[academicYearId] ?? [];
+    if (enrollment.mode === "new") {
+      onChange({ ...enrollment, academicYearId, startPeriodId: newPeriods[0]?.id ?? "" });
+    } else {
+      onChange({ ...enrollment, academicYearId, groupStartDate: newPeriods[0]?.startDate ?? "" });
+    }
+  }
+
   function setMode(mode: "new" | "existing-group") {
     if (mode === enrollment.mode) return;
     if (mode === "new") {
@@ -43,10 +57,7 @@ export function EnrollmentForm({ academicYears, periodsByYear, enrollment, onCha
     <Card title="Kayıt Türü ve Akademik Takvim">
       <div className="space-y-4">
         <Field label="Akademik Yıl" required error={errors.academicYearId}>
-          <Select
-            value={enrollment.academicYearId}
-            onChange={(e) => onChange({ ...enrollment, academicYearId: e.target.value } as Enrollment)}
-          >
+          <Select value={enrollment.academicYearId} onChange={(e) => setAcademicYear(e.target.value)}>
             {academicYears.map((y) => (
               <option key={y.id} value={y.id}>
                 {y.label}

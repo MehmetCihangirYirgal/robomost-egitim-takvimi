@@ -114,19 +114,29 @@ export function NewPlanWizard({ academicYears, initialPlan, onSaved, onCancel }:
     setErrors(map);
     if (Object.keys(map).length > 0 || !selectedYear) return;
 
-    const generated = generatePaymentPlan({
-      academicYear: selectedYear,
-      programDays: plan.program.programDays,
-      enrollment: plan.enrollment,
-      payment: plan.payment
-    });
+    // generatePaymentPlan throws for a handful of edge cases (e.g. an
+    // "Mevcut Gruba Dahil Et" katılım tarihi that falls after the academic
+    // calendar's last active week). Left uncaught, that exception aborts
+    // this click handler silently — no payment table, nothing saved, and
+    // no visible error — which reads as "I created a plan but it never
+    // showed up in Kayıtlı Planlar". Catch it and say so instead.
+    try {
+      const generated = generatePaymentPlan({
+        academicYear: selectedYear,
+        programDays: plan.program.programDays,
+        enrollment: plan.enrollment,
+        payment: plan.payment
+      });
 
-    const merged = plan.generatedPlan
-      ? { ...generated, installments: mergeManualOverrides(generated.installments, plan.generatedPlan.installments) }
-      : generated;
+      const merged = plan.generatedPlan
+        ? { ...generated, installments: mergeManualOverrides(generated.installments, plan.generatedPlan.installments) }
+        : generated;
 
-    persist({ ...plan, generatedPlan: merged });
-    setShowPreview(false);
+      persist({ ...plan, generatedPlan: merged });
+      setShowPreview(false);
+    } catch (err) {
+      setErrors({ generate: err instanceof Error ? err.message : "Ödeme planı hesaplanamadı. Girilen tarihleri kontrol edin." });
+    }
   }
 
   function handlePlanTableChange(generatedPlan: StudentPlan["generatedPlan"]) {
